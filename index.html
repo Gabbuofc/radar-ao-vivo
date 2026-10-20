@@ -98,7 +98,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     </div>
   </section>
 
-  <footer>Manchetes do Google Notícias, recarregadas a cada 10 minutos. Cotações e paradas vêm direto do TradingView e do Spotify. Nada aqui é recomendação de investimento.</footer>
+  <footer>Manchetes do Google Notícias, atualizadas a cada 15 minutos. Cotações e paradas vêm direto do TradingView e do Spotify. Nada aqui é recomendação de investimento.</footer>
 </div>
 
 <script>
@@ -130,35 +130,8 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     c.appendChild(s);card.appendChild(c);box.appendChild(card);
   });
 
-  // Notícias (Google Notícias RSS)
-  function gn(q,lang){
-    var p=lang==='en'?'&hl=en-US&gl=US&ceid=US:en':'&hl=pt-BR&gl=BR&ceid=BR:pt-419';
-    return 'https://news.google.com/rss/search?q='+encodeURIComponent(q+' when:1d')+p;
-  }
-  var feeds={
-    ia:gn('"inteligência artificial" OR OpenAI OR Anthropic OR Gemini','pt'),
-    mundo:gn('music pop album OR tour OR Billboard','en'),
-    sertanejo:gn('sertanejo','pt'),
-    popbr:gn('Anitta OR "pop brasileiro" OR "música brasileira" OR Ludmilla OR "Luísa Sonza"','pt')
-  };
+  // Notícias: news.json, gerado a cada 15 min pelo GitHub Actions a partir do Google Notícias
   var cache={};
-
-  function parseXml(txt){
-    var doc=new DOMParser().parseFromString(txt,'text/xml');
-    return Array.prototype.map.call(doc.querySelectorAll('item'),function(i){
-      var g=function(t){var e=i.querySelector(t);return e?e.textContent:'';};
-      return {title:g('title'),link:g('link'),pubDate:g('pubDate'),source:g('source')};
-    });
-  }
-  function load(url){
-    var a='https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url);
-    return fetch(a).then(function(r){return r.json();}).then(function(j){
-      if(j.status!=='ok'||!j.items||!j.items.length)throw new Error('rss2json');
-      return j.items.map(function(i){return {title:i.title,link:i.link,pubDate:i.pubDate,source:i.author||''};});
-    }).catch(function(){
-      return fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url)).then(function(r){return r.text();}).then(parseXml);
-    });
-  }
   function rel(d){
     var t=new Date(String(d).replace(' ','T'));if(isNaN(t))t=new Date(d);if(isNaN(t))return '';
     var m=Math.round((Date.now()-t)/60000);
@@ -166,7 +139,7 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
   }
   function render(id,items){
     var box=document.getElementById(id);box.textContent='';
-    if(!items||!items.length){var p=document.createElement('p');p.className='empty';p.textContent='Nenhuma manchete agora. Tentando de novo em 10 minutos.';box.appendChild(p);return;}
+    if(!items||!items.length){var p=document.createElement('p');p.className='empty';p.textContent='Nenhuma manchete agora. A página tenta de novo em alguns minutos.';box.appendChild(p);return;}
     items.slice(0,8).forEach(function(it){
       var title=it.title||'',src=it.source||'';
       var k=title.lastIndexOf(' - ');if(k>0){if(!src)src=title.slice(k+3);title=title.slice(0,k);}
@@ -177,19 +150,21 @@ footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);paddin
     });
   }
   var tab='mundo';
-  function stamp(id){document.getElementById(id).textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+  function stamp(iso){
+    var d=new Date(iso);var t=isNaN(d)?'':'Atualizado às '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('t-ia').textContent=t;document.getElementById('t-mus').textContent=t;
+  }
   function refresh(){
-    load(feeds.ia).then(function(x){render('ia',x);stamp('t-ia');}).catch(function(){render('ia',[]);});
-    ['mundo','sertanejo','popbr'].forEach(function(k){
-      load(feeds[k]).then(function(x){cache[k]=x;if(k===tab){render('musica',x);stamp('t-mus');}}).catch(function(){cache[k]=[];if(k===tab)render('musica',[]);});
-    });
+    fetch('news.json?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();}).then(function(d){
+      cache=d||{};render('ia',cache.ia);render('musica',cache[tab]);stamp(cache.atualizadoEm);
+    }).catch(function(){if(!cache.ia){render('ia',[]);render('musica',[]);}});
   }
   document.getElementById('tabs').addEventListener('click',function(e){
     var b=e.target.closest('.tab');if(!b)return;tab=b.dataset.k;
     Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(x){x.setAttribute('aria-selected',String(x===b));});
     if(cache[tab])render('musica',cache[tab]);else document.getElementById('musica').innerHTML='<p class="empty">Carregando manchetes…</p>';
   });
-  refresh(); setInterval(refresh,10*60*1000);
+  refresh(); setInterval(refresh,5*60*1000);
 })();
 </script>
 </body>
