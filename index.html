@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Radar 24h ao vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,500..800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --bg:#EEF1F5;--surface:#FFFFFF;--ink:#141B2D;--muted:#56607A;--line:#D5DBE5;
+  --accent:#2B4ACB;--amber:#B86A00;--live:#C2410C;
+  --display:'Archivo','Arial Narrow',Arial,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0F1422;--surface:#182033;--ink:#E8ECF5;--muted:#9AA5BF;--line:#2A3550;
+  --accent:#7C93FF;--amber:#F0A63A;--live:#FF8A4C;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--body)}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 16px 48px;display:flex;flex-direction:column;gap:32px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px}
+h1{font-family:var(--display);font-stretch:78%;font-weight:800;font-size:clamp(2.2rem,6vw,3.4rem);line-height:.95;margin:0}
+h1 span{color:var(--accent)}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);margin:0 0 6px}
+.sub{color:var(--muted);margin:6px 0 0}
+.live{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12.5px;color:var(--muted);padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--live);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.dot{animation:none}}
+h2{font-family:var(--display);font-stretch:85%;font-weight:700;font-size:1.35rem;margin:0}
+.head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.note{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.quotes{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.q{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0;height:190px}
+.q .tradingview-widget-container{height:100%}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+.list{border-top:2px solid var(--ink);display:flex;flex-direction:column}
+.item{padding:12px 0;border-bottom:1px solid var(--line);min-width:0}
+.item a{color:inherit;text-decoration:none;font-weight:600;line-height:1.35}
+.item a:hover{color:var(--accent);text-decoration:underline}
+.item .src{display:block;font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:3px}
+.empty{color:var(--muted);padding:14px 0}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{font:500 13px var(--body);background:transparent;color:var(--muted);border:1px solid var(--line);padding:6px 12px;border-radius:999px;cursor:pointer}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab:focus-visible,a:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.sp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px}
+.sp iframe{width:100%;height:560px;border:0;border-radius:12px}
+footer{color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:1000px){.quotes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:800px){.cols,.sp{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:420px){.quotes{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">IA · Música · Mercado</p>
+      <h1>Radar <span>ao vivo</span></h1>
+      <p class="sub">Cotações em tempo real, manchetes das últimas 24 horas e as paradas do Spotify.</p>
+    </div>
+    <span class="live"><span class="dot"></span><span id="clock">—</span></span>
+  </header>
+
+  <section>
+    <div class="head"><h2>Mercado financeiro</h2><span class="note">Cotações do TradingView · algumas com até 15 min de atraso</span></div>
+    <div class="quotes" id="quotes"></div>
+  </section>
+
+  <div class="cols">
+    <section>
+      <div class="head"><h2>Inteligência artificial</h2><span class="note" id="t-ia"></span></div>
+      <div class="list" id="ia"><p class="empty">Carregando manchetes…</p></div>
+    </section>
+    <section>
+      <div class="head">
+        <h2>Música</h2>
+        <div class="tabs" role="tablist" id="tabs">
+          <button class="tab" role="tab" data-k="mundo" aria-selected="true">Mundo</button>
+          <button class="tab" role="tab" data-k="sertanejo" aria-selected="false">Sertanejo</button>
+          <button class="tab" role="tab" data-k="popbr" aria-selected="false">Pop BR</button>
+        </div>
+      </div>
+      <div class="list" id="musica"><p class="empty">Carregando manchetes…</p></div>
+      <p class="note" id="t-mus"></p>
+    </section>
+  </div>
+
+  <section>
+    <div class="head"><h2>Top 50 do Spotify</h2><span class="note">Playlists oficiais, atualizadas diariamente pelo Spotify</span></div>
+    <div class="sp">
+      <iframe title="Top 50 Brasil" src="https://open.spotify.com/embed/playlist/37i9dQZEVXbMXbN3EUUhlg?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+      <iframe title="Top 50 Global" src="https://open.spotify.com/embed/playlist/37i9dQZEVXbMDoHDwVN2tF?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    </div>
+  </section>
+
+  <footer>Manchetes do Google Notícias, recarregadas a cada 10 minutos. Cotações e paradas vêm direto do TradingView e do Spotify. Nada aqui é recomendação de investimento.</footer>
+</div>
+
+<script>
+(function(){
+  var dark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+
+  // Relógio
+  function tick(){document.getElementById('clock').textContent='Ao vivo · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+  tick(); setInterval(tick,1000);
+
+  // Cotações (TradingView)
+  var ativos=[
+    {s:'BMFBOVESPA:IBOV',n:'Ibovespa'},
+    {s:'FX_IDC:USDBRL',n:'Dólar (R$)'},
+    {s:'FOREXCOM:SPXUSD',n:'S&P 500'},
+    {s:'BITSTAMP:BTCUSD',n:'Bitcoin (US$)'},
+    {s:'TVC:UKOIL',n:'Petróleo Brent'}
+  ];
+  var box=document.getElementById('quotes');
+  ativos.forEach(function(a){
+    var card=document.createElement('div');card.className='q';
+    var c=document.createElement('div');c.className='tradingview-widget-container';
+    var w=document.createElement('div');w.className='tradingview-widget-container__widget';
+    c.appendChild(w);
+    var s=document.createElement('script');
+    s.src='https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js';
+    s.async=true;
+    s.textContent=JSON.stringify({symbols:[[a.n,a.s+'|1D']],symbol:a.s,width:'100%',height:'100%',locale:'br',dateRange:'1D',colorTheme:dark?'dark':'light',isTransparent:true,autosize:true,largeChartUrl:'',chartOnly:false,noTimeScale:false});
+    c.appendChild(s);card.appendChild(c);box.appendChild(card);
+  });
+
+  // Notícias (Google Notícias RSS)
+  function gn(q,lang){
+    var p=lang==='en'?'&hl=en-US&gl=US&ceid=US:en':'&hl=pt-BR&gl=BR&ceid=BR:pt-419';
+    return 'https://news.google.com/rss/search?q='+encodeURIComponent(q+' when:1d')+p;
+  }
+  var feeds={
+    ia:gn('"inteligência artificial" OR OpenAI OR Anthropic OR Gemini','pt'),
+    mundo:gn('music pop album OR tour OR Billboard','en'),
+    sertanejo:gn('sertanejo','pt'),
+    popbr:gn('Anitta OR "pop brasileiro" OR "música brasileira" OR Ludmilla OR "Luísa Sonza"','pt')
+  };
+  var cache={};
+
+  function parseXml(txt){
+    var doc=new DOMParser().parseFromString(txt,'text/xml');
+    return Array.prototype.map.call(doc.querySelectorAll('item'),function(i){
+      var g=function(t){var e=i.querySelector(t);return e?e.textContent:'';};
+      return {title:g('title'),link:g('link'),pubDate:g('pubDate'),source:g('source')};
+    });
+  }
+  function load(url){
+    var a='https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(url);
+    return fetch(a).then(function(r){return r.json();}).then(function(j){
+      if(j.status!=='ok'||!j.items||!j.items.length)throw new Error('rss2json');
+      return j.items.map(function(i){return {title:i.title,link:i.link,pubDate:i.pubDate,source:i.author||''};});
+    }).catch(function(){
+      return fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url)).then(function(r){return r.text();}).then(parseXml);
+    });
+  }
+  function rel(d){
+    var t=new Date(String(d).replace(' ','T'));if(isNaN(t))t=new Date(d);if(isNaN(t))return '';
+    var m=Math.round((Date.now()-t)/60000);
+    return m<60?('há '+Math.max(m,1)+' min'):('há '+Math.floor(m/60)+' h');
+  }
+  function render(id,items){
+    var box=document.getElementById(id);box.textContent='';
+    if(!items||!items.length){var p=document.createElement('p');p.className='empty';p.textContent='Nenhuma manchete agora. Tentando de novo em 10 minutos.';box.appendChild(p);return;}
+    items.slice(0,8).forEach(function(it){
+      var title=it.title||'',src=it.source||'';
+      var k=title.lastIndexOf(' - ');if(k>0){if(!src)src=title.slice(k+3);title=title.slice(0,k);}
+      var d=document.createElement('div');d.className='item';
+      var a=document.createElement('a');a.href=it.link;a.target='_blank';a.rel='noopener';a.textContent=title;
+      var s=document.createElement('span');s.className='src';s.textContent=[src,rel(it.pubDate)].filter(Boolean).join(' · ');
+      d.appendChild(a);d.appendChild(s);box.appendChild(d);
+    });
+  }
+  var tab='mundo';
+  function stamp(id){document.getElementById(id).textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});}
+  function refresh(){
+    load(feeds.ia).then(function(x){render('ia',x);stamp('t-ia');}).catch(function(){render('ia',[]);});
+    ['mundo','sertanejo','popbr'].forEach(function(k){
+      load(feeds[k]).then(function(x){cache[k]=x;if(k===tab){render('musica',x);stamp('t-mus');}}).catch(function(){cache[k]=[];if(k===tab)render('musica',[]);});
+    });
+  }
+  document.getElementById('tabs').addEventListener('click',function(e){
+    var b=e.target.closest('.tab');if(!b)return;tab=b.dataset.k;
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'),function(x){x.setAttribute('aria-selected',String(x===b));});
+    if(cache[tab])render('musica',cache[tab]);else document.getElementById('musica').innerHTML='<p class="empty">Carregando manchetes…</p>';
+  });
+  refresh(); setInterval(refresh,10*60*1000);
+})();
+</script>
+</body>
+</html>
