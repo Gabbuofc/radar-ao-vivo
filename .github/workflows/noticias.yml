@@ -1,0 +1,52 @@
+name: Atualizar noticias
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: noticias
+  cancel-in-progress: false
+jobs:
+  noticias:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Buscar manchetes no Google Noticias
+        run: |
+          python3 - <<'EOF'
+          import json, urllib.request, urllib.parse, xml.etree.ElementTree as ET, datetime
+          def gn(q, lang):
+              p = '&hl=en-US&gl=US&ceid=US:en' if lang == 'en' else '&hl=pt-BR&gl=BR&ceid=BR:pt-419'
+              return 'https://news.google.com/rss/search?q=' + urllib.parse.quote(q + ' when:1d') + p
+          feeds = {
+              'ia': gn('"inteligência artificial" OR OpenAI OR Anthropic OR Gemini', 'pt'),
+              'mundo': gn('music pop album OR tour OR Billboard', 'en'),
+              'sertanejo': gn('sertanejo', 'pt'),
+              'popbr': gn('Anitta OR "pop brasileiro" OR "música brasileira" OR Ludmilla OR "Luísa Sonza"', 'pt'),
+          }
+          out = {'atualizadoEm': datetime.datetime.now(datetime.timezone.utc).isoformat()}
+          for k, u in feeds.items():
+              items = []
+              try:
+                  req = urllib.request.Request(u, headers={'User-Agent': 'Mozilla/5.0'})
+                  root = ET.fromstring(urllib.request.urlopen(req, timeout=30).read())
+                  for it in root.iter('item'):
+                      src = it.find('source')
+                      items.append({'title': it.findtext('title', ''), 'link': it.findtext('link', ''),
+                                    'pubDate': it.findtext('pubDate', ''), 'source': src.text if src is not None else ''})
+                      if len(items) >= 12:
+                          break
+              except Exception as e:
+                  print('falhou', k, e)
+              out[k] = items
+          with open('news.json', 'w', encoding='utf-8') as f:
+              json.dump(out, f, ensure_ascii=False)
+          EOF
+      - name: Salvar no site
+        run: |
+          git config user.name "radar-bot"
+          git config user.email "radar-bot@users.noreply.github.com"
+          git add news.json
+          git diff --cached --quiet || (git commit -m "Atualiza noticias" && git push)
